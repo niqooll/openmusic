@@ -1,0 +1,31 @@
+{
+  "name": "openmusic-api",
+  "version": "1.0.0",
+  "description": "OpenMusic API for managing albums and songs",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "nodemon src/server.js",
+    "migrate": "node-pg-migrate",
+    "migrate:up": "node-pg-migrate up",
+    "migrate:down": "node-pg-migrate down"
+  },
+  "keywords": [
+    "music",
+    "api",
+    "hapi"
+  ],
+  "author": "TSC Team",
+  "license": "ISC",
+  "dependencies": {
+    "@hapi/hapi": "^21.3.2",
+    "dotenv": "^16.3.1",
+    "joi": "^17.11.0",
+    "nanoid": "^3.3.7",
+    "pg": "^8.11.3"
+  },
+  "devDependencies": {
+    "node-pg-migrate": "^6.2.2",
+    "nodemon": "^3.0.1"
+  }
+}
