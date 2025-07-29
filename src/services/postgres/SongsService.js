@@ -11,8 +11,8 @@ class SongsService {
   async addSong({ title, year, genre, performer, duration, albumId }) {
     const id = `song-${nanoid(16)}`;
 
-    // Validasi albumId jika disediakan
-    if (albumId) {
+    // Validasi albumId jika disediakan dan tidak kosong
+    if (albumId && albumId.trim() !== '') {
       const albumQuery = {
         text: 'SELECT id FROM albums WHERE id = $1',
         values: [albumId],
@@ -27,7 +27,15 @@ class SongsService {
 
     const query = {
       text: 'INSERT INTO songs VALUES($1, $2, $3, $4, $5, $6, $7) RETURNING id',
-      values: [id, title, year, genre, performer, duration, albumId || null],
+      values: [
+        id, 
+        title, 
+        year, 
+        genre, 
+        performer, 
+        duration || null, 
+        (albumId && albumId.trim() !== '') ? albumId : null
+      ],
     };
 
     const result = await this._pool.query(query);
