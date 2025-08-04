@@ -1,7 +1,5 @@
 /* eslint-disable camelcase */
 
-exports.shorthands = undefined;
-
 exports.up = (pgm) => {
   // Drop foreign key constraint yang terlalu ketat
   pgm.dropConstraint('songs', 'songs_album_id_fkey');
