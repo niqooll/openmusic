@@ -1,15 +1,14 @@
 const { nanoid } = require('nanoid');
-const { Pool } = require('pg');
 const InvariantError = require('../../exceptions/InvariantError');
-const NotFoundError = require('../../exceptions/NotFoundError'); // Import NotFoundError
+const NotFoundError = require('../../exceptions/NotFoundError');
+const { createPool } = require('../../utils/database');
 
 class CollaborationsService {
   constructor() {
-    this._pool = new Pool();
+    this._pool = createPool();
   }
 
   async addCollaboration(playlistId, userId) {
-    // BARU: Verifikasi user ada di database sebelum menambahkan kolaborasi
     const userQuery = {
       text: 'SELECT id FROM users WHERE id = $1',
       values: [userId],

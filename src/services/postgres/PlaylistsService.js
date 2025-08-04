@@ -1,12 +1,13 @@
 const { nanoid } = require('nanoid');
-const { Pool } = require('pg');
 const InvariantError = require('../../exceptions/InvariantError');
 const NotFoundError = require('../../exceptions/NotFoundError');
 const AuthorizationError = require('../../exceptions/AuthorizationError');
+const { createPool } = require('../../utils/database');
+
 
 class PlaylistsService {
   constructor(collaborationService) {
-    this._pool = new Pool();
+    this._pool = createPool();
     this._collaborationService = collaborationService;
   }
 

@@ -1,11 +1,12 @@
-const { Pool } = require('pg');
 const { nanoid } = require('nanoid');
 const InvariantError = require('../../exceptions/InvariantError');
 const NotFoundError = require('../../exceptions/NotFoundError');
+const { sanitizeSearchQuery } = require('../../utils/inputSanitizer');
+const { createPool } = require('../../utils/database');
 
 class SongsService {
   constructor() {
-    this._pool = new Pool();
+    this._pool = createPool();
   }
 
   async addSong({ title, year, genre, performer, duration, albumId }) {
@@ -37,11 +38,13 @@ class SongsService {
     return result.rows[0].id;
   }
 
-  // Menerapkan saran untuk getSongs
   async getSongs(title = '', performer = '') {
+    const sanitizedTitle = sanitizeSearchQuery(title);
+    const sanitizedPerformer = sanitizeSearchQuery(performer);
+    
     const query = {
       text: 'SELECT id, title, performer FROM songs WHERE title ILIKE $1 AND performer ILIKE $2',
-      values: [`%${title}%`, `%${performer}%`],
+      values: [`%${sanitizedTitle}%`, `%${sanitizedPerformer}%`],
     };
     const { rows } = await this._pool.query(query);
     return rows;
