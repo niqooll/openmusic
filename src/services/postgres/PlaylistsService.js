@@ -4,7 +4,6 @@ const NotFoundError = require('../../exceptions/NotFoundError');
 const AuthorizationError = require('../../exceptions/AuthorizationError');
 const { createPool } = require('../../utils/database');
 
-
 class PlaylistsService {
   constructor(collaborationService) {
     this._pool = createPool();
@@ -49,7 +48,7 @@ class PlaylistsService {
     }
   }
 
-  async addSongToPlaylist(playlistId, songId, userId) { // Tambahkan userId
+  async addSongToPlaylist(playlistId, songId, userId) {
     // verifikasi songId
     const songQuery = {
       text: 'SELECT id FROM songs WHERE id = $1',
@@ -76,24 +75,24 @@ class PlaylistsService {
 
   async getSongsFromPlaylist(playlistId) {
     const playlistQuery = {
-        text: `SELECT p.id, p.name, u.username
+      text: `SELECT p.id, p.name, u.username
                FROM playlists p
                JOIN users u ON p.owner = u.id
                WHERE p.id = $1`,
-        values: [playlistId],
+      values: [playlistId],
     };
 
     const songsQuery = {
-        text: `SELECT s.id, s.title, s.performer
+      text: `SELECT s.id, s.title, s.performer
                FROM songs s
                JOIN playlist_songs ps ON s.id = ps.song_id
                WHERE ps.playlist_id = $1`,
-        values: [playlistId],
+      values: [playlistId],
     };
 
     const playlistResult = await this._pool.query(playlistQuery);
     if (playlistResult.rows.length === 0) {
-        throw new NotFoundError('Playlist tidak ditemukan');
+      throw new NotFoundError('Playlist tidak ditemukan');
     }
 
     const songsResult = await this._pool.query(songsQuery);
@@ -104,7 +103,7 @@ class PlaylistsService {
     return playlist;
   }
 
-  async deleteSongFromPlaylist(playlistId, songId, userId) { // Tambahkan userId
+  async deleteSongFromPlaylist(playlistId, songId, userId) {
     const query = {
       text: 'DELETE FROM playlist_songs WHERE playlist_id = $1 AND song_id = $2 RETURNING id',
       values: [playlistId, songId],
@@ -152,7 +151,9 @@ class PlaylistsService {
     const id = `activity-${nanoid(16)}`;
     const time = new Date().toISOString();
     const query = {
-      text: 'INSERT INTO playlist_song_activities (id, playlist_id, song_id, user_id, action, time) VALUES ($1, $2, $3, $4, $5, $6)',
+      text: `INSERT INTO playlist_song_activities 
+             (id, playlist_id, song_id, user_id, action, time) 
+             VALUES ($1, $2, $3, $4, $5, $6)`,
       values: [id, playlistId, songId, userId, action, time],
     };
     await this._pool.query(query);

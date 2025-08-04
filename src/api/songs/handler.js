@@ -1,18 +1,14 @@
-const autoBind = require('auto-bind'); // Jangan lupa import
+const autoBind = require('auto-bind');
 
 class SongsHandler {
   constructor(service, validator) {
     this._service = service;
     this._validator = validator;
-
-    // Menerapkan auto-bind
     autoBind(this);
   }
 
   async postSongHandler(request, h) {
     this._validator.validateSongPayload(request.payload);
-
-    // Menerapkan saran: langsung teruskan payload
     const songId = await this._service.addSong(request.payload);
 
     const response = h.response({
@@ -25,8 +21,7 @@ class SongsHandler {
     return response;
   }
 
-  async getSongsHandler(request, h) {
-    // Destructuring tetap diperlukan di sini untuk mengambil query params
+  async getSongsHandler(request) {
     const { title, performer } = request.query;
     const songs = await this._service.getSongs(title, performer);
 
@@ -38,7 +33,7 @@ class SongsHandler {
     };
   }
 
-  async getSongByIdHandler(request, h) {
+  async getSongByIdHandler(request) {
     const { id } = request.params;
     const song = await this._service.getSongById(id);
 
@@ -50,7 +45,7 @@ class SongsHandler {
     };
   }
 
-  async putSongByIdHandler(request, h) {
+  async putSongByIdHandler(request) {
     this._validator.validateSongPayload(request.payload);
     const { id } = request.params;
 
@@ -62,7 +57,7 @@ class SongsHandler {
     };
   }
 
-  async deleteSongByIdHandler(request, h) {
+  async deleteSongByIdHandler(request) {
     const { id } = request.params;
     await this._service.deleteSongById(id);
 

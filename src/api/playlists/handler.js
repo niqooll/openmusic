@@ -66,7 +66,6 @@ class PlaylistsHandler {
     return response;
   }
 
-
   async getSongsFromPlaylistHandler(request) {
     const { id: playlistId } = request.params;
     const { id: credentialId } = request.auth.credentials;
@@ -97,7 +96,7 @@ class PlaylistsHandler {
       message: 'Lagu berhasil dihapus dari playlist',
     };
   }
-  
+
   async getPlaylistActivitiesHandler(request) {
     const { id: playlistId } = request.params;
     const { id: credentialId } = request.auth.credentials;

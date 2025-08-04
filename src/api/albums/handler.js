@@ -4,8 +4,6 @@ class AlbumsHandler {
   constructor(service, validator) {
     this._service = service;
     this._validator = validator;
-
-    // mem-bind nilai this untuk seluruh method sekaligus
     autoBind(this);
   }
 
@@ -25,7 +23,7 @@ class AlbumsHandler {
     return response;
   }
 
-  async getAlbumByIdHandler(request, h) {
+  async getAlbumByIdHandler(request) {
     const { id } = request.params;
     const album = await this._service.getAlbumWithSongs(id);
 
@@ -37,7 +35,7 @@ class AlbumsHandler {
     };
   }
 
-  async putAlbumByIdHandler(request, h) {
+  async putAlbumByIdHandler(request) {
     this._validator.validateAlbumPayload(request.payload);
     const { id } = request.params;
 
@@ -49,7 +47,7 @@ class AlbumsHandler {
     };
   }
 
-  async deleteAlbumByIdHandler(request, h) {
+  async deleteAlbumByIdHandler(request) {
     const { id } = request.params;
     await this._service.deleteAlbumById(id);
 
@@ -61,6 +59,3 @@ class AlbumsHandler {
 }
 
 module.exports = AlbumsHandler;
-
-// Jangan lupa install package auto-bind:
-// npm install auto-bind@4

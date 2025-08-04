@@ -7,13 +7,13 @@ class HealthHandler {
 
   async healthCheckHandler(request, h) {
     const startTime = Date.now();
-    
+
     try {
       // Check database connection
       await this._pool.query('SELECT 1');
-      
+
       const responseTime = Date.now() - startTime;
-      
+
       return {
         status: 'healthy',
         timestamp: new Date().toISOString(),

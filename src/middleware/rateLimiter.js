@@ -7,14 +7,14 @@ const rateLimit = (options = {}) => {
   return (request, h) => {
     const clientId = request.info.remoteAddress;
     const now = Date.now();
-    
+
     if (!rateLimitMap.has(clientId)) {
       rateLimitMap.set(clientId, { count: 1, resetTime: now + windowMs });
       return h.continue;
     }
 
     const clientData = rateLimitMap.get(clientId);
-    
+
     if (now > clientData.resetTime) {
       rateLimitMap.set(clientId, { count: 1, resetTime: now + windowMs });
       return h.continue;
