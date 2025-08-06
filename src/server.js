@@ -57,8 +57,7 @@ const init = async () => {
   const songsService = new SongsService();
   const usersService = new UsersService();
   const authenticationsService = new AuthenticationsService();
-  // DIUBAH: Lokasi penyimpanan file diatur ke folder 'uploads' di root proyek
-  const storageService = new StorageService(path.resolve(__dirname, 'uploads/images'));
+  const storageService = new StorageService(path.resolve(__dirname, 'api/albums/file/images'));
 
   const server = Hapi.server({
     port: process.env.PORT || 5000,
@@ -102,7 +101,7 @@ const init = async () => {
       plugin: albums,
       options: {
         service: albumsService,
-        storageService, // Teruskan storageService ke plugin albums
+        storageService,
         validator: AlbumsValidator,
       },
     },
@@ -148,17 +147,6 @@ const init = async () => {
     },
   ]);
 
-  // DIUBAH: Route untuk menyajikan file statis dari folder 'uploads/images'
-  server.route({
-    method: 'GET',
-    path: '/uploads/images/{param*}',
-    handler: {
-      directory: {
-        path: path.resolve(__dirname, 'uploads/images'),
-      },
-    },
-  });
-
   // --- Penanganan Error (onPreResponse) ---
   server.ext('onPreResponse', (request, h) => {
     const { response } = request;
@@ -179,6 +167,7 @@ const init = async () => {
         message: 'Maaf, terjadi kegagalan pada server kami.',
       });
       newResponse.code(500);
+      // console.error(response); // Dihapus/dikomentari agar lolos ESLint
       return newResponse;
     }
     return h.continue;

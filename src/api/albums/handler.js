@@ -104,11 +104,9 @@ class AlbumsHandler {
     const { cover } = request.payload;
     const { id: albumId } = request.params;
 
-    // Lakukan validasi header di sini
     this._validator.validateImageHeaders(cover.hapi.headers);
 
     const filename = await this._storageService.writeFile(cover, cover.hapi);
-    // Pastikan URL Anda konsisten dengan route di server.js
     const fileUrl = `http://${process.env.HOST}:${process.env.PORT}/uploads/images/${filename}`;
 
     await this._service.addCoverToAlbum(albumId, fileUrl);
