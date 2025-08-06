@@ -36,14 +36,17 @@ class AlbumsService {
     }
 
     const album = result.rows[0];
+    
+    // PENTING: Pastikan struktur response konsisten
     return {
       id: album.id,
       name: album.name,
       year: album.year,
-      coverUrl: album.cover || null, // Explicit null for empty cover
+      // Gunakan coverUrl (camelCase) dan pastikan tidak null
+      coverUrl: album.cover || null,
     };
   }
-
+  
   async getAlbumWithSongs(id) {
     const album = await this.getAlbumById(id);
     const songsQuery = {
@@ -51,7 +54,9 @@ class AlbumsService {
       values: [id],
     };
     const songsResult = await this._pool.query(songsQuery);
-    album.songs = songsResult.rows;
+    
+    // Pastikan songs selalu array (tidak undefined)
+    album.songs = songsResult.rows || [];
     return album;
   }
 

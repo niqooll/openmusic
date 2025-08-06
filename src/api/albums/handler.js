@@ -104,53 +104,46 @@ class AlbumsHandler {
     const { id: albumId } = request.params;
     
     try {
-      // 1. Verifikasi album exists
+      // 1. Verify album exists first
       await this._service.getAlbumById(albumId);
-
-      console.log('Request payload:', request.payload); // Debug log
-      console.log('Payload keys:', Object.keys(request.payload || {})); // Debug log
-
-      // 2. Cek apakah payload ada dan memiliki properti cover
-      if (!request.payload || typeof request.payload !== 'object') {
+      
+      // 2. Check if payload exists
+      if (!request.payload) {
         const response = h.response({
           status: 'fail',
-          message: 'Payload diperlukan',
+          message: 'Payload harus diisi',
         });
         response.code(400);
         return response;
       }
 
       const { cover } = request.payload;
-
-      // 3. Cek apakah ada field cover dan merupakan stream
+      
+      // 3. Check if cover field exists
       if (!cover) {
         const response = h.response({
           status: 'fail',
-          message: 'Cover diperlukan',
+          message: 'Cover harus diisi',
         });
         response.code(400);
         return response;
       }
 
-      // 4. Cek apakah cover adalah readable stream dengan headers
-      if (!cover.hapi || !cover.hapi.headers || !cover._readableState) {
+      // 4. Validate content type dari headers
+      if (!cover.hapi || !cover.hapi.headers) {
         const response = h.response({
           status: 'fail',
-          message: 'Cover harus berupa file',
+          message: 'File tidak valid',
         });
         response.code(400);
         return response;
       }
 
-      const { headers } = cover.hapi;
-      console.log('File headers:', headers); // Debug log
-
-      // 5. Validasi content-type
-      const contentType = headers['content-type'];
+      const contentType = cover.hapi.headers['content-type'];
       const allowedTypes = [
         'image/apng',
         'image/avif',
-        'image/gif', 
+        'image/gif',
         'image/jpeg',
         'image/jpg',
         'image/png',
@@ -160,17 +153,17 @@ class AlbumsHandler {
       if (!contentType || !allowedTypes.includes(contentType)) {
         const response = h.response({
           status: 'fail',
-          message: 'Cover harus berupa gambar',
+          message: 'File harus berupa gambar',
         });
         response.code(400);
         return response;
       }
 
-      // 6. Proses upload file - StorageService akan handle size validation
+      // 5. Process upload - StorageService will handle file size validation
       const filename = await this._storageService.writeFile(cover, cover.hapi);
       const fileUrl = `http://${process.env.HOST}:${process.env.PORT}/uploads/images/${filename}`;
 
-      // 7. Update album dengan cover URL
+      // 6. Update album with cover URL
       await this._service.addCoverToAlbum(albumId, fileUrl);
 
       const response = h.response({
@@ -181,9 +174,7 @@ class AlbumsHandler {
       return response;
 
     } catch (error) {
-      console.error('Upload error:', error.message); // Debug log
-
-      // Handle specific storage service errors
+      // Handle file size errors specifically
       if (error.message && error.message.includes('Payload content length greater than')) {
         const response = h.response({
           status: 'fail',
@@ -202,7 +193,7 @@ class AlbumsHandler {
         return response;
       }
 
-      // Re-throw error untuk global error handler
+      // Re-throw other errors for global handler
       throw error;
     }
   }

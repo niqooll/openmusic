@@ -51,9 +51,9 @@ const routes = (handler) => [
         output: 'stream',
         parse: true,
         multipart: true,
-        maxBytes: 1048576, // 1MB (lebih besar dari 512KB untuk menghindari early rejection)
-        timeout: 30000, // 30 detik timeout
-        allow: 'multipart/form-data', // Pastikan hanya menerima multipart
+        maxBytes: 512000, // Exactly 512KB
+        timeout: 30000,
+        // Hapus 'allow' property untuk lebih flexible
       },
     },
   },

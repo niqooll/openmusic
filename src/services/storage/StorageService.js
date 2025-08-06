@@ -14,7 +14,7 @@ class StorageService {
 
   writeFile(file, meta) {
     return new Promise((resolve, reject) => {
-      const maxSize = 512000; // 512KB - EXACT limit as per requirement
+      const maxSize = 512000; // 512KB - exact limit
       
       // Generate unique filename
       const timestamp = Date.now();
@@ -23,57 +23,36 @@ class StorageService {
       const filename = `${timestamp}-${randomStr}-${originalName}`;
       const filePath = path.resolve(this._folder, filename);
 
-      console.log(`Starting file upload: ${filename}`);
-      console.log('File headers:', meta.headers);
-
       const fileStream = fs.createWriteStream(filePath);
       let fileSize = 0;
-      let sizeExceeded = false;
 
+      // Handle file stream errors
+      file.on('error', (error) => {
+        console.error('File read error:', error);
+        fileStream.destroy();
+        if (fs.existsSync(filePath)) {
+          fs.unlinkSync(filePath);
+        }
+        reject(new Error('File read error'));
+      });
+
+      // Handle write stream errors
       fileStream.on('error', (error) => {
-        console.error('Write stream error:', error);
-        // Clean up file on error
+        console.error('File write error:', error);
         if (fs.existsSync(filePath)) {
           fs.unlinkSync(filePath);
         }
         reject(new Error('Failed to write file'));
       });
 
-      fileStream.on('finish', () => {
-        console.log(`File upload finished: ${filename} (${fileSize} bytes)`);
-        
-        // Final size check after writing is complete
-        if (sizeExceeded || fileSize > maxSize) {
-          console.log(`File too large: ${fileSize} bytes > ${maxSize} bytes`);
-          // Clean up oversized file
-          if (fs.existsSync(filePath)) {
-            fs.unlinkSync(filePath);
-          }
-          reject(new Error('Payload content length greater than maximum allowed: 512000'));
-          return;
-        }
-        
-        resolve(filename);
-      });
-
-      file.on('error', (error) => {
-        console.error('File stream error:', error);
-        fileStream.destroy();
-        // Clean up partial file
-        if (fs.existsSync(filePath)) {
-          fs.unlinkSync(filePath);
-        }
-        reject(new Error('File stream error'));
-      });
-
+      // Process data chunks
       file.on('data', (chunk) => {
         fileSize += chunk.length;
-        console.log(`Received chunk: ${chunk.length} bytes, total: ${fileSize} bytes`);
         
-        // Check size during streaming to prevent large files
+        // Check size limit during streaming
         if (fileSize > maxSize) {
-          console.log(`Size exceeded during streaming: ${fileSize} > ${maxSize}`);
-          sizeExceeded = true;
+          console.log(`File size exceeded: ${fileSize} > ${maxSize}`);
+          file.destroy();
           fileStream.destroy();
           if (fs.existsSync(filePath)) {
             fs.unlinkSync(filePath);
@@ -83,9 +62,15 @@ class StorageService {
         }
       });
 
+      // Handle end of file stream
       file.on('end', () => {
-        console.log('File stream ended, finalizing...');
         fileStream.end();
+      });
+
+      // Handle successful write completion
+      fileStream.on('finish', () => {
+        console.log(`File uploaded successfully: ${filename} (${fileSize} bytes)`);
+        resolve(filename);
       });
 
       // Start piping the file
