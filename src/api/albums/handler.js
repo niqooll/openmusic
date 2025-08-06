@@ -1,8 +1,9 @@
 const autoBind = require('auto-bind');
 
 class AlbumsHandler {
-  constructor(service, validator) {
+  constructor(service, storageService, validator) {
     this._service = service;
+    this._storageService = storageService;
     this._validator = validator;
     autoBind(this);
   }
@@ -55,6 +56,69 @@ class AlbumsHandler {
       status: 'success',
       message: 'Album berhasil dihapus',
     };
+  }
+
+  async postAlbumLikeHandler(request, h) {
+    const { id: albumId } = request.params;
+    const { id: userId } = request.auth.credentials;
+
+    await this._service.addAlbumLike(albumId, userId);
+
+    const response = h.response({
+      status: 'success',
+      message: 'Berhasil menyukai album',
+    });
+    response.code(201);
+    return response;
+  }
+
+  async getAlbumLikesHandler(request, h) {
+    const { id: albumId } = request.params;
+    const { count, isCache } = await this._service.getAlbumLikesCount(albumId);
+
+    const response = h.response({
+      status: 'success',
+      data: {
+        likes: count,
+      },
+    });
+
+    if (isCache) {
+      response.header('X-Data-Source', 'cache');
+    }
+    return response;
+  }
+
+  async deleteAlbumLikeHandler(request, h) {
+    const { id: albumId } = request.params;
+    const { id: userId } = request.auth.credentials;
+
+    await this._service.deleteAlbumLike(albumId, userId);
+    return {
+      status: 'success',
+      message: 'Batal menyukai album berhasil',
+    };
+  }
+
+  async postUploadCoverHandler(request, h) {
+    const { cover } = request.payload;
+    const { id: albumId } = request.params;
+
+    // Lakukan validasi header di sini
+    this._validator.validateImageHeaders(cover.hapi.headers);
+
+    const filename = await this._storageService.writeFile(cover, cover.hapi);
+    // Pastikan URL Anda konsisten dengan route di server.js
+    const fileUrl = `http://${process.env.HOST}:${process.env.PORT}/uploads/images/${filename}`;
+
+    await this._service.addCoverToAlbum(albumId, fileUrl);
+
+    const response = h.response({
+      status: 'success',
+      message: 'Sampul berhasil diunggah',
+    });
+    response.code(201);
+    return response;
   }
 }
 
