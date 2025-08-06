@@ -30,6 +30,7 @@
     "auto-bind": "^4.0.0",
     "bcrypt": "^6.0.0",
     "dotenv": "^16.3.1",
+    "file-type": "^21.0.0",
     "hapi-swagger": "^17.3.2",
     "joi": "^17.11.0",
     "jsonwebtoken": "^9.0.2",

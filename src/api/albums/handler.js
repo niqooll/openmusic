@@ -101,17 +101,27 @@ class AlbumsHandler {
   }
 
   async postUploadCoverHandler(request, h) {
+    const { id: albumId } = request.params;
+    
     try {
-      const { id: albumId } = request.params;
-      
-      // Verifikasi album exists
+      // 1. Verifikasi album exists
       await this._service.getAlbumById(albumId);
 
-      // Check if payload and cover exist
-      if (!request.payload || !request.payload.cover) {
+      // 2. Cek apakah payload ada
+      if (!request.payload) {
         const response = h.response({
           status: 'fail',
-          message: 'Cover file is required',
+          message: 'Payload diperlukan',
+        });
+        response.code(400);
+        return response;
+      }
+
+      // 3. Cek apakah ada field cover
+      if (!request.payload.cover) {
+        const response = h.response({
+          status: 'fail',
+          message: 'Cover diperlukan',
         });
         response.code(400);
         return response;
@@ -119,19 +129,20 @@ class AlbumsHandler {
 
       const { cover } = request.payload;
 
-      // Validasi headers
-      if (!cover.hapi || !cover.hapi.headers) {
+      // 4. Cek apakah cover adalah stream dengan headers
+      if (!cover || typeof cover !== 'object' || !cover.hapi) {
         const response = h.response({
           status: 'fail',
-          message: 'Invalid file format',
+          message: 'Cover harus berupa file',
         });
-        response.code(415);
+        response.code(400);
         return response;
       }
 
-      const contentType = cover.hapi.headers['content-type'];
-      
-      // Check content type
+      const { headers } = cover.hapi;
+
+      // 5. Validasi content-type
+      const contentType = headers['content-type'];
       const allowedTypes = [
         'image/apng',
         'image/avif',
@@ -142,37 +153,31 @@ class AlbumsHandler {
         'image/webp'
       ];
 
-      if (!allowedTypes.includes(contentType)) {
+      if (!contentType || !allowedTypes.includes(contentType)) {
         const response = h.response({
           status: 'fail',
-          message: 'File type not supported. Only image files are allowed.',
+          message: 'File harus berupa gambar',
         });
-        response.code(415);
+        response.code(400);
         return response;
       }
 
-      // Validate file size (max 512KB)
-      const maxSize = 512000;
-      let fileSize = 0;
-
-      if (cover.hapi.headers['content-length']) {
-        fileSize = parseInt(cover.hapi.headers['content-length'], 10);
-      }
-
-      if (fileSize > maxSize) {
+      // 6. Validasi ukuran file dari header content-length
+      const contentLength = headers['content-length'];
+      if (contentLength && parseInt(contentLength, 10) > 512000) {
         const response = h.response({
           status: 'fail',
-          message: 'File size too large. Maximum size is 512KB.',
+          message: 'Payload content length greater than maximum allowed: 512000',
         });
         response.code(413);
         return response;
       }
 
-      // Save file
+      // 7. Proses upload file dengan validasi size realtime
       const filename = await this._storageService.writeFile(cover, cover.hapi);
       const fileUrl = `http://${process.env.HOST}:${process.env.PORT}/uploads/images/${filename}`;
 
-      // Update album with cover URL
+      // 8. Update album dengan cover URL
       await this._service.addCoverToAlbum(albumId, fileUrl);
 
       const response = h.response({
@@ -183,7 +188,17 @@ class AlbumsHandler {
       return response;
 
     } catch (error) {
-      // Re-throw the error to be handled by global error handler
+      // Handle error dari StorageService
+      if (error.message.includes('size exceeds')) {
+        const response = h.response({
+          status: 'fail',
+          message: 'Payload content length greater than maximum allowed: 512000',
+        });
+        response.code(413);
+        return response;
+      }
+
+      // Re-throw error lainnya ke global error handler
       throw error;
     }
   }

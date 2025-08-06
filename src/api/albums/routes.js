@@ -51,8 +51,9 @@ const routes = (handler) => [
         output: 'stream',
         parse: true,
         multipart: true,
-        allow: 'multipart/form-data',
-        maxBytes: 512000, // 512KB
+        // PENTING: Hilangkan pembatasan allow dan maxBytes di sini
+        // Biarkan semua request masuk ke handler untuk validasi custom
+        timeout: false,
       },
     },
   },

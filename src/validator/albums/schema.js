@@ -6,7 +6,7 @@ const AlbumPayloadSchema = Joi.object({
     .required(),
 });
 
-// Schema untuk validasi image headers yang lebih ketat
+// Schema untuk validasi image headers
 const ImageHeadersSchema = Joi.object({
   'content-type': Joi.string().valid(
     'image/apng',
@@ -15,10 +15,13 @@ const ImageHeadersSchema = Joi.object({
     'image/jpeg',
     'image/jpg',
     'image/png',
-    'image/svg+xml',
     'image/webp'
-  ).required(),
-  'content-length': Joi.number().max(512000).optional(), // max 512KB
-}).unknown(); // Allow other headers
+  ).required().messages({
+    'any.only': 'File harus berupa gambar',
+  }),
+  'content-length': Joi.number().max(512000).optional().messages({
+    'number.max': 'Ukuran gambar terlalu besar',
+  }), 
+}).unknown();
 
 module.exports = { AlbumPayloadSchema, ImageHeadersSchema };

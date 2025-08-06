@@ -66,6 +66,11 @@ const init = async () => {
       cors: {
         origin: ['*'],
       },
+      // PENTING: Konfigurasi payload global yang lebih permisif
+      payload: {
+        maxBytes: 1048576, // 1MB, lebih besar dari 512KB untuk menghindari rejection
+        timeout: false,
+      },
     },
   });
 
@@ -148,11 +153,12 @@ const init = async () => {
     },
   ]);
 
-  // --- Global Error Handler ---
+  // --- PENTING: Global Error Handler yang Diperbaiki ---
   server.ext('onPreResponse', (request, h) => {
     const { response } = request;
     
     if (response instanceof Error) {
+      // Handle ClientError (custom errors)
       if (response instanceof ClientError) {
         const newResponse = h.response({
           status: 'fail',
@@ -162,23 +168,35 @@ const init = async () => {
         return newResponse;
       }
 
-      // Handle payload parsing errors (multipart issues)
-      if (response.output && response.output.statusCode === 415) {
+      // Handle Joi validation errors
+      if (response.isJoi) {
         const newResponse = h.response({
           status: 'fail',
-          message: 'Unsupported Media Type',
+          message: response.details[0].message,
         });
-        newResponse.code(415);
+        newResponse.code(400);
         return newResponse;
       }
 
-      // Handle payload too large
-      if (response.output && response.output.statusCode === 413) {
+      // Handle Hapi Boom errors
+      if (response.isBoom) {
+        // Jangan langsung return boom errors, konversi ke format yang konsisten
+        const statusCode = response.output.statusCode;
+        let message = 'Terjadi kesalahan';
+
+        if (statusCode === 413) {
+          message = 'Payload content length greater than maximum allowed: 512000';
+        } else if (statusCode === 415) {
+          message = 'Unsupported Media Type';
+        } else if (statusCode === 400) {
+          message = response.message || 'Bad Request';
+        }
+
         const newResponse = h.response({
-          status: 'fail', 
-          message: 'Payload Too Large',
+          status: 'fail',
+          message,
         });
-        newResponse.code(413);
+        newResponse.code(statusCode);
         return newResponse;
       }
 

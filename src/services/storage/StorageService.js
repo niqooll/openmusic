@@ -14,6 +14,17 @@ class StorageService {
 
   writeFile(file, meta) {
     return new Promise((resolve, reject) => {
+      // Validate file size first
+      const maxSize = 512000; // 512KB
+      
+      if (meta.headers && meta.headers['content-length']) {
+        const fileSize = parseInt(meta.headers['content-length'], 10);
+        if (fileSize > maxSize) {
+          reject(new Error('File size exceeds 512KB limit'));
+          return;
+        }
+      }
+
       // Generate unique filename
       const timestamp = Date.now();
       const randomStr = Math.random().toString(36).substring(7);
@@ -24,6 +35,7 @@ class StorageService {
       console.log(`Attempting to save file: ${filename}`);
 
       const fileStream = fs.createWriteStream(filePath);
+      let fileSize = 0;
 
       fileStream.on('error', (error) => {
         console.error('Write stream error:', error);
@@ -31,7 +43,18 @@ class StorageService {
       });
 
       fileStream.on('finish', () => {
-        console.log(`File saved successfully: ${filename}`);
+        console.log(`File saved successfully: ${filename} (${fileSize} bytes)`);
+        
+        // Double check file size after writing
+        if (fileSize > maxSize) {
+          // Clean up oversized file
+          if (fs.existsSync(filePath)) {
+            fs.unlinkSync(filePath);
+          }
+          reject(new Error('File size exceeds 512KB limit'));
+          return;
+        }
+        
         resolve(filename);
       });
 
@@ -43,6 +66,19 @@ class StorageService {
           fs.unlinkSync(filePath);
         }
         reject(new Error(`File stream error: ${error.message}`));
+      });
+
+      file.on('data', (chunk) => {
+        fileSize += chunk.length;
+        // Check size during streaming to prevent large files
+        if (fileSize > maxSize) {
+          fileStream.destroy();
+          if (fs.existsSync(filePath)) {
+            fs.unlinkSync(filePath);
+          }
+          reject(new Error('File size exceeds 512KB limit'));
+          return;
+        }
       });
 
       file.on('end', () => {
