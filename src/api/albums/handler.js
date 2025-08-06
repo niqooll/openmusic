@@ -107,8 +107,11 @@ class AlbumsHandler {
       // 1. Verifikasi album exists
       await this._service.getAlbumById(albumId);
 
-      // 2. Cek apakah payload ada
-      if (!request.payload) {
+      console.log('Request payload:', request.payload); // Debug log
+      console.log('Payload keys:', Object.keys(request.payload || {})); // Debug log
+
+      // 2. Cek apakah payload ada dan memiliki properti cover
+      if (!request.payload || typeof request.payload !== 'object') {
         const response = h.response({
           status: 'fail',
           message: 'Payload diperlukan',
@@ -117,8 +120,10 @@ class AlbumsHandler {
         return response;
       }
 
-      // 3. Cek apakah ada field cover
-      if (!request.payload.cover) {
+      const { cover } = request.payload;
+
+      // 3. Cek apakah ada field cover dan merupakan stream
+      if (!cover) {
         const response = h.response({
           status: 'fail',
           message: 'Cover diperlukan',
@@ -127,10 +132,8 @@ class AlbumsHandler {
         return response;
       }
 
-      const { cover } = request.payload;
-
-      // 4. Cek apakah cover adalah stream dengan headers
-      if (!cover || typeof cover !== 'object' || !cover.hapi) {
+      // 4. Cek apakah cover adalah readable stream dengan headers
+      if (!cover.hapi || !cover.hapi.headers || !cover._readableState) {
         const response = h.response({
           status: 'fail',
           message: 'Cover harus berupa file',
@@ -140,6 +143,7 @@ class AlbumsHandler {
       }
 
       const { headers } = cover.hapi;
+      console.log('File headers:', headers); // Debug log
 
       // 5. Validasi content-type
       const contentType = headers['content-type'];
@@ -156,28 +160,17 @@ class AlbumsHandler {
       if (!contentType || !allowedTypes.includes(contentType)) {
         const response = h.response({
           status: 'fail',
-          message: 'File harus berupa gambar',
+          message: 'Cover harus berupa gambar',
         });
         response.code(400);
         return response;
       }
 
-      // 6. Validasi ukuran file dari header content-length
-      const contentLength = headers['content-length'];
-      if (contentLength && parseInt(contentLength, 10) > 512000) {
-        const response = h.response({
-          status: 'fail',
-          message: 'Payload content length greater than maximum allowed: 512000',
-        });
-        response.code(413);
-        return response;
-      }
-
-      // 7. Proses upload file dengan validasi size realtime
+      // 6. Proses upload file - StorageService akan handle size validation
       const filename = await this._storageService.writeFile(cover, cover.hapi);
       const fileUrl = `http://${process.env.HOST}:${process.env.PORT}/uploads/images/${filename}`;
 
-      // 8. Update album dengan cover URL
+      // 7. Update album dengan cover URL
       await this._service.addCoverToAlbum(albumId, fileUrl);
 
       const response = h.response({
@@ -188,8 +181,10 @@ class AlbumsHandler {
       return response;
 
     } catch (error) {
-      // Handle error dari StorageService
-      if (error.message.includes('size exceeds')) {
+      console.error('Upload error:', error.message); // Debug log
+
+      // Handle specific storage service errors
+      if (error.message && error.message.includes('Payload content length greater than')) {
         const response = h.response({
           status: 'fail',
           message: 'Payload content length greater than maximum allowed: 512000',
@@ -198,7 +193,16 @@ class AlbumsHandler {
         return response;
       }
 
-      // Re-throw error lainnya ke global error handler
+      if (error.message && error.message.includes('File size exceeds')) {
+        const response = h.response({
+          status: 'fail',
+          message: 'Payload content length greater than maximum allowed: 512000',
+        });
+        response.code(413);
+        return response;
+      }
+
+      // Re-throw error untuk global error handler
       throw error;
     }
   }

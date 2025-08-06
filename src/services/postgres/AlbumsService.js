@@ -40,7 +40,7 @@ class AlbumsService {
       id: album.id,
       name: album.name,
       year: album.year,
-      coverUrl: album.cover, // pastikan ini null jika tidak ada cover
+      coverUrl: album.cover || null, // Explicit null for empty cover
     };
   }
 
@@ -158,6 +158,7 @@ class AlbumsService {
       throw new NotFoundError('Gagal memperbarui sampul. Album tidak ditemukan');
     }
   }
+  
 }
 
 module.exports = AlbumsService;

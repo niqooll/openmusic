@@ -153,11 +153,14 @@ const init = async () => {
     },
   ]);
 
-  // --- PENTING: Global Error Handler yang Diperbaiki ---
+  // Tambahkan ini di server.js menggantikan existing error handler
+
   server.ext('onPreResponse', (request, h) => {
     const { response } = request;
     
     if (response instanceof Error) {
+      console.log('Error caught in global handler:', response.message);
+      
       // Handle ClientError (custom errors)
       if (response instanceof ClientError) {
         const newResponse = h.response({
@@ -180,16 +183,14 @@ const init = async () => {
 
       // Handle Hapi Boom errors
       if (response.isBoom) {
-        // Jangan langsung return boom errors, konversi ke format yang konsisten
         const statusCode = response.output.statusCode;
-        let message = 'Terjadi kesalahan';
+        let message = response.message || 'Terjadi kesalahan';
 
-        if (statusCode === 413) {
+        // Handle specific payload errors
+        if (statusCode === 413 || response.message.includes('Payload content length')) {
           message = 'Payload content length greater than maximum allowed: 512000';
         } else if (statusCode === 415) {
           message = 'Unsupported Media Type';
-        } else if (statusCode === 400) {
-          message = response.message || 'Bad Request';
         }
 
         const newResponse = h.response({
@@ -197,6 +198,16 @@ const init = async () => {
           message,
         });
         newResponse.code(statusCode);
+        return newResponse;
+      }
+
+      // Handle our custom storage errors
+      if (response.message && response.message.includes('Payload content length greater than')) {
+        const newResponse = h.response({
+          status: 'fail', 
+          message: response.message,
+        });
+        newResponse.code(413);
         return newResponse;
       }
 
@@ -219,12 +230,12 @@ const init = async () => {
   });
 
   await server.start();
-  console.log(`Server berjalan pada ${server.info.uri}`);
-};
+    console.log(`Server berjalan pada ${server.info.uri}`);
+  };
 
-process.on('unhandledRejection', (err) => {
-  console.error('Unhandled Rejection:', err);
-  process.exit(1);
-});
+  process.on('unhandledRejection', (err) => {
+    console.error('Unhandled Rejection:', err);
+    process.exit(1);
+  });
 
 init();

@@ -14,17 +14,8 @@ class StorageService {
 
   writeFile(file, meta) {
     return new Promise((resolve, reject) => {
-      // Validate file size first
-      const maxSize = 512000; // 512KB
+      const maxSize = 512000; // 512KB - EXACT limit as per requirement
       
-      if (meta.headers && meta.headers['content-length']) {
-        const fileSize = parseInt(meta.headers['content-length'], 10);
-        if (fileSize > maxSize) {
-          reject(new Error('File size exceeds 512KB limit'));
-          return;
-        }
-      }
-
       // Generate unique filename
       const timestamp = Date.now();
       const randomStr = Math.random().toString(36).substring(7);
@@ -32,26 +23,33 @@ class StorageService {
       const filename = `${timestamp}-${randomStr}-${originalName}`;
       const filePath = path.resolve(this._folder, filename);
 
-      console.log(`Attempting to save file: ${filename}`);
+      console.log(`Starting file upload: ${filename}`);
+      console.log('File headers:', meta.headers);
 
       const fileStream = fs.createWriteStream(filePath);
       let fileSize = 0;
+      let sizeExceeded = false;
 
       fileStream.on('error', (error) => {
         console.error('Write stream error:', error);
-        reject(new Error(`Failed to write file: ${error.message}`));
+        // Clean up file on error
+        if (fs.existsSync(filePath)) {
+          fs.unlinkSync(filePath);
+        }
+        reject(new Error('Failed to write file'));
       });
 
       fileStream.on('finish', () => {
-        console.log(`File saved successfully: ${filename} (${fileSize} bytes)`);
+        console.log(`File upload finished: ${filename} (${fileSize} bytes)`);
         
-        // Double check file size after writing
-        if (fileSize > maxSize) {
+        // Final size check after writing is complete
+        if (sizeExceeded || fileSize > maxSize) {
+          console.log(`File too large: ${fileSize} bytes > ${maxSize} bytes`);
           // Clean up oversized file
           if (fs.existsSync(filePath)) {
             fs.unlinkSync(filePath);
           }
-          reject(new Error('File size exceeds 512KB limit'));
+          reject(new Error('Payload content length greater than maximum allowed: 512000'));
           return;
         }
         
@@ -65,24 +63,28 @@ class StorageService {
         if (fs.existsSync(filePath)) {
           fs.unlinkSync(filePath);
         }
-        reject(new Error(`File stream error: ${error.message}`));
+        reject(new Error('File stream error'));
       });
 
       file.on('data', (chunk) => {
         fileSize += chunk.length;
+        console.log(`Received chunk: ${chunk.length} bytes, total: ${fileSize} bytes`);
+        
         // Check size during streaming to prevent large files
         if (fileSize > maxSize) {
+          console.log(`Size exceeded during streaming: ${fileSize} > ${maxSize}`);
+          sizeExceeded = true;
           fileStream.destroy();
           if (fs.existsSync(filePath)) {
             fs.unlinkSync(filePath);
           }
-          reject(new Error('File size exceeds 512KB limit'));
+          reject(new Error('Payload content length greater than maximum allowed: 512000'));
           return;
         }
       });
 
       file.on('end', () => {
-        console.log('File stream ended');
+        console.log('File stream ended, finalizing...');
         fileStream.end();
       });
 
