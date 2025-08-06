@@ -36,12 +36,11 @@ class AlbumsService {
     }
 
     const album = result.rows[0];
-    // DIUBAH: Membuat properti coverUrl
     return {
       id: album.id,
       name: album.name,
       year: album.year,
-      coverUrl: album.cover,
+      coverUrl: album.cover, // pastikan ini null jika tidak ada cover
     };
   }
 
@@ -81,7 +80,7 @@ class AlbumsService {
   }
 
   async addAlbumLike(albumId, userId) {
-    // Verifikasi album ada
+    // Verifikasi album ada terlebih dahulu
     await this.getAlbumById(albumId);
 
     // Verifikasi apakah user sudah like sebelumnya
@@ -138,20 +137,23 @@ class AlbumsService {
       const result = await this._pool.query(query);
       const likesCount = parseInt(result.rows[0].count, 10);
 
-      // Simpan ke cache
-      await this._cacheService.set(`album-likes:${albumId}`, JSON.stringify(likesCount));
+      // Simpan ke cache dengan expire time 30 menit (1800 detik)
+      await this._cacheService.set(`album-likes:${albumId}`, JSON.stringify(likesCount), 1800);
 
       return { count: likesCount, isCache: false };
     }
   }
 
-  // --- METHOD BARU ---
   async addCoverToAlbum(id, fileUrl) {
+    // Verifikasi album exists first
+    await this.getAlbumById(id);
+    
     const query = {
       text: 'UPDATE albums SET cover = $1 WHERE id = $2 RETURNING id',
       values: [fileUrl, id],
     };
     const result = await this._pool.query(query);
+    
     if (result.rows.length === 0) {
       throw new NotFoundError('Gagal memperbarui sampul. Album tidak ditemukan');
     }

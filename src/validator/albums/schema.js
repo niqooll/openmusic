@@ -6,8 +6,19 @@ const AlbumPayloadSchema = Joi.object({
     .required(),
 });
 
+// Schema untuk validasi image headers yang lebih ketat
 const ImageHeadersSchema = Joi.object({
-  'content-type': Joi.string().valid('image/apng', 'image/avif', 'image/gif', 'image/jpeg', 'image/png', 'image/webp').required(),
-}).unknown();
+  'content-type': Joi.string().valid(
+    'image/apng',
+    'image/avif', 
+    'image/gif',
+    'image/jpeg',
+    'image/jpg',
+    'image/png',
+    'image/svg+xml',
+    'image/webp'
+  ).required(),
+  'content-length': Joi.number().max(512000).optional(), // max 512KB
+}).unknown(); // Allow other headers
 
 module.exports = { AlbumPayloadSchema, ImageHeadersSchema };

@@ -69,7 +69,7 @@ const init = async () => {
     },
   });
 
-  // --- Registrasi Plugin Eksternal & Strategi Autentikasi JWT ---
+  // --- Registrasi Plugin Eksternal ---
   await server.register([
     {
       plugin: Jwt,
@@ -79,6 +79,7 @@ const init = async () => {
     },
   ]);
 
+  // --- Konfigurasi JWT Strategy ---
   server.auth.strategy('openmusic_jwt', 'jwt', {
     keys: process.env.ACCESS_TOKEN_KEY,
     verify: {
@@ -95,7 +96,7 @@ const init = async () => {
     }),
   });
 
-  // --- Registrasi Semua Plugin Internal ---
+  // --- Registrasi Plugin Internal ---
   await server.register([
     {
       plugin: albums,
@@ -147,9 +148,10 @@ const init = async () => {
     },
   ]);
 
-  // --- Penanganan Error (onPreResponse) ---
+  // --- Global Error Handler ---
   server.ext('onPreResponse', (request, h) => {
     const { response } = request;
+    
     if (response instanceof Error) {
       if (response instanceof ClientError) {
         const newResponse = h.response({
@@ -159,17 +161,42 @@ const init = async () => {
         newResponse.code(response.statusCode);
         return newResponse;
       }
+
+      // Handle payload parsing errors (multipart issues)
+      if (response.output && response.output.statusCode === 415) {
+        const newResponse = h.response({
+          status: 'fail',
+          message: 'Unsupported Media Type',
+        });
+        newResponse.code(415);
+        return newResponse;
+      }
+
+      // Handle payload too large
+      if (response.output && response.output.statusCode === 413) {
+        const newResponse = h.response({
+          status: 'fail', 
+          message: 'Payload Too Large',
+        });
+        newResponse.code(413);
+        return newResponse;
+      }
+
+      // Other client errors
       if (!response.isServer) {
         return h.continue;
       }
+
+      // Server errors
+      console.error('Server Error:', response.message, response.stack);
       const newResponse = h.response({
         status: 'error',
         message: 'Maaf, terjadi kegagalan pada server kami.',
       });
       newResponse.code(500);
-      // console.error(response); // Dihapus/dikomentari agar lolos ESLint
       return newResponse;
     }
+
     return h.continue;
   });
 
@@ -178,7 +205,7 @@ const init = async () => {
 };
 
 process.on('unhandledRejection', (err) => {
-  console.log(err);
+  console.error('Unhandled Rejection:', err);
   process.exit(1);
 });
 

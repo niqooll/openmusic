@@ -89,7 +89,7 @@ class AlbumsHandler {
     return response;
   }
 
-  async deleteAlbumLikeHandler(request, h) {
+  async deleteAlbumLikeHandler(request) {
     const { id: albumId } = request.params;
     const { id: userId } = request.auth.credentials;
 
@@ -101,22 +101,91 @@ class AlbumsHandler {
   }
 
   async postUploadCoverHandler(request, h) {
-    const { cover } = request.payload;
-    const { id: albumId } = request.params;
+    try {
+      const { id: albumId } = request.params;
+      
+      // Verifikasi album exists
+      await this._service.getAlbumById(albumId);
 
-    this._validator.validateImageHeaders(cover.hapi.headers);
+      // Check if payload and cover exist
+      if (!request.payload || !request.payload.cover) {
+        const response = h.response({
+          status: 'fail',
+          message: 'Cover file is required',
+        });
+        response.code(400);
+        return response;
+      }
 
-    const filename = await this._storageService.writeFile(cover, cover.hapi);
-    const fileUrl = `http://${process.env.HOST}:${process.env.PORT}/uploads/images/${filename}`;
+      const { cover } = request.payload;
 
-    await this._service.addCoverToAlbum(albumId, fileUrl);
+      // Validasi headers
+      if (!cover.hapi || !cover.hapi.headers) {
+        const response = h.response({
+          status: 'fail',
+          message: 'Invalid file format',
+        });
+        response.code(415);
+        return response;
+      }
 
-    const response = h.response({
-      status: 'success',
-      message: 'Sampul berhasil diunggah',
-    });
-    response.code(201);
-    return response;
+      const contentType = cover.hapi.headers['content-type'];
+      
+      // Check content type
+      const allowedTypes = [
+        'image/apng',
+        'image/avif',
+        'image/gif', 
+        'image/jpeg',
+        'image/jpg',
+        'image/png',
+        'image/webp'
+      ];
+
+      if (!allowedTypes.includes(contentType)) {
+        const response = h.response({
+          status: 'fail',
+          message: 'File type not supported. Only image files are allowed.',
+        });
+        response.code(415);
+        return response;
+      }
+
+      // Validate file size (max 512KB)
+      const maxSize = 512000;
+      let fileSize = 0;
+
+      if (cover.hapi.headers['content-length']) {
+        fileSize = parseInt(cover.hapi.headers['content-length'], 10);
+      }
+
+      if (fileSize > maxSize) {
+        const response = h.response({
+          status: 'fail',
+          message: 'File size too large. Maximum size is 512KB.',
+        });
+        response.code(413);
+        return response;
+      }
+
+      // Save file
+      const filename = await this._storageService.writeFile(cover, cover.hapi);
+      const fileUrl = `http://${process.env.HOST}:${process.env.PORT}/uploads/images/${filename}`;
+
+      // Update album with cover URL
+      await this._service.addCoverToAlbum(albumId, fileUrl);
+
+      const response = h.response({
+        status: 'success',
+        message: 'Sampul berhasil diunggah',
+      });
+      response.code(201);
+      return response;
+
+    } catch (error) {
+      // Re-throw the error to be handled by global error handler
+      throw error;
+    }
   }
 }
 

@@ -1,6 +1,4 @@
 const path = require('path');
-const Joi = require('joi');
-const { ImageHeadersSchema } = require('../../validator/albums/schema');
 
 const routes = (handler) => [
   {
@@ -50,20 +48,22 @@ const routes = (handler) => [
     handler: handler.postUploadCoverHandler,
     options: {
       payload: {
-        allow: 'multipart/form-data',
-        multipart: true,
         output: 'stream',
+        parse: true,
+        multipart: true,
+        allow: 'multipart/form-data',
         maxBytes: 512000, // 512KB
       },
-      auth: 'openmusic_jwt',
     },
   },
   {
     method: 'GET',
-    path: '/albums/covers/{param*}',
+    path: '/uploads/images/{param*}',
     handler: {
       directory: {
         path: path.resolve(__dirname, 'file/images'),
+        redirectToSlash: true,
+        index: false,
       },
     },
   },
