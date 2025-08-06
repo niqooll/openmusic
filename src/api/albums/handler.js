@@ -171,6 +171,8 @@ class AlbumsHandler {
       // Save file
       const filename = await this._storageService.writeFile(cover, cover.hapi);
       const fileUrl = `http://${process.env.HOST}:${process.env.PORT}/uploads/images/${filename}`;
+
+      // Update album with cover URL
       await this._service.addCoverToAlbum(albumId, fileUrl);
 
       const response = h.response({
@@ -181,6 +183,7 @@ class AlbumsHandler {
       return response;
 
     } catch (error) {
+      // Re-throw the error to be handled by global error handler
       throw error;
     }
   }

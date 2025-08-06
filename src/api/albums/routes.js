@@ -48,12 +48,12 @@ const routes = (handler) => [
     handler: handler.postUploadCoverHandler,
     options: {
       payload: {
-        allow: 'multipart/form-data',
-        multipart: true,
         output: 'stream',
-        maxBytes: 512000,
+        parse: true,
+        multipart: true,
+        allow: 'multipart/form-data',
+        maxBytes: 512000, // 512KB
       },
-      auth: 'openmusic_jwt', // Pastikan autentikasi tetap ada
     },
   },
   {
